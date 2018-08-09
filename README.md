@@ -5,18 +5,17 @@ Because I have. Too many ruddy times.
 
 Here's the solution! A phone app that allows you to perform actions such as shutting down or locking your PC from anywhere in your home with the press of a button, right in your pocket!
 
-The PCManager is a mobile/PC application that enables users to control basic OS functions via LAN.
-Features include:
-	Shutdown
-	Standby
-	Lock
-	Reboot
+# The details
+PCManager is a mobile/PC application that enables users to control basic OS functions via LAN.  
+Features include:  
+	- Shutdown  
+	- Standby  
+	- Lock  
+	- Reboot  
 	
 This repository holds two projects.
-- Android
+- Android  
 	This is the Android app. It acts as the client and sends requests to the Desktop
 	
-- Desktop
+- Desktop  
 	This is a JVM based application for Windows. It acts as the server and manages the requests via system calls.
-	
-
