@@ -5,6 +5,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -29,49 +30,26 @@ public class MainActivity extends AppCompatActivity {
     private String newCodeStr = "";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         File codeFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
         isPaused = false;
 
+        ButtonManager buttonManager = new ButtonManager();
         Button btnShutdown = findViewById(R.id.btnShutdown);
-        btnShutdown.setOnClickListener(v ->
-                                       {
-                                           SendCommand shutdownCommand = new SendCommand();
-                                           shutdownCommand.execute("0", clientID);
-                                       });
+        btnShutdown.setOnClickListener(buttonManager);
         Button btnStandby = findViewById(R.id.btnStandby);
-        btnStandby.setOnClickListener(v ->
-                                      {
-                                          SendCommand standbyCommand = new SendCommand();
-                                          standbyCommand.execute("1", clientID);
-                                      });
+        btnStandby.setOnClickListener(buttonManager);
         Button btnLock = findViewById(R.id.btnLock);
-        btnLock.setOnClickListener(v ->
-                                   {
-                                       SendCommand lockCommand = new SendCommand();
-                                       lockCommand.execute("2", clientID);
-                                   });
+        btnLock.setOnClickListener(buttonManager);
         Button btnRestart = findViewById(R.id.btnRestart);
-        btnRestart.setOnClickListener(v ->
-                                      {
-                                          SendCommand restartCommand = new SendCommand();
-                                          restartCommand.execute("3", clientID);
-                                      });
+        btnRestart.setOnClickListener(buttonManager);
         Button btnAbout = findViewById(R.id.btnAbout);
-        btnAbout.setOnClickListener(v ->
-                                    {
-                                        AlertDialog.Builder aboutBox = new AlertDialog.Builder(MainActivity.this);
-                                        aboutBox.setTitle("About");
-                                        aboutBox.setMessage("To get started, press \"New Code\" and enter the code shown on your PC.");
-                                        aboutBox.setNeutralButton("Ok!", (dialog, which) -> dialog.dismiss());
-                                        aboutBox.show();
-                                    });
-
+        btnAbout.setOnClickListener(buttonManager);
         Button btnNCode = findViewById(R.id.btnNCode);
-        btnNCode.setOnClickListener(v -> newCode(false));
-
+        btnNCode.setOnClickListener(buttonManager);
 
         if (!codeFile.exists())
         {
@@ -90,10 +68,52 @@ public class MainActivity extends AppCompatActivity {
             {
                 e.printStackTrace();
             }
-
         }
-
     }
+
+    public class ButtonManager implements View.OnClickListener
+    {
+        @Override
+        public void onClick(View view)
+        {
+            int viewID = view.getId();
+            switch (viewID)
+            {
+                case R.id.btnShutdown:
+                    Command shutdownCommand = new Command();
+                    shutdownCommand.execute("0", clientID);
+                    break;
+
+                case R.id.btnStandby:
+                    Command standbyCommand = new Command();
+                    standbyCommand.execute("1", clientID);
+                    break;
+
+                case R.id.btnLock:
+                    Command lockCommand = new Command();
+                    lockCommand.execute("2", clientID);
+                    break;
+
+                case R.id.btnRestart:
+                    Command restartCommand = new Command();
+                    restartCommand.execute("3", clientID);
+                    break;
+
+                case R.id.btnAbout:
+                    AlertDialog.Builder aboutBox = new AlertDialog.Builder(MainActivity.this);
+                    aboutBox.setTitle("About");
+                    aboutBox.setMessage("To get started, press \"New Code\" and enter the code shown on your PC.");
+                    aboutBox.setNeutralButton("Ok!", (dialog, which) -> dialog.dismiss());
+                    aboutBox.show();
+                    break;
+
+                case R.id.btnNCode:
+                    newCode(false);
+                    break;
+            }
+        }
+    }
+
     @Override
     protected void onPause()
     {
@@ -163,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
         codeDialog.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         codeDialog.show();
     }
-    private class SendCommand extends AsyncTask<String, Void, Void>
+    private class Command extends AsyncTask<String, Void, Void>
     {
         boolean isSuccess;
         private void runCommand(String code, String id)
@@ -219,7 +239,8 @@ public class MainActivity extends AppCompatActivity {
         boolean isSuccess = false;
 
         @Override
-        protected Void doInBackground(Void... args) {
+        protected Void doInBackground(Void... args)
+        {
             isSuccess = connect();
             return null;
         }
@@ -363,10 +384,5 @@ public class MainActivity extends AppCompatActivity {
         {
             e.printStackTrace();
         }
-
-
     }
-
-
-
 }
