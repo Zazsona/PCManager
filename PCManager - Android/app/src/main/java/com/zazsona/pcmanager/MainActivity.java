@@ -242,6 +242,20 @@ public class MainActivity extends AppCompatActivity {
         protected Void doInBackground(Void... args)
         {
             isSuccess = connect();
+            if (!isSuccess)
+            {
+                if (!clientID.equals(""))
+                {
+                    try
+                    {
+                        Thread.sleep(5000);
+                    }
+                    catch (InterruptedException e)
+                    {
+                        e.printStackTrace();
+                    }
+                }
+            }
             return null;
         }
 
@@ -261,17 +275,6 @@ public class MainActivity extends AppCompatActivity {
                 if (isPaused)
                 {
                     return;
-                }
-                if (!clientID.equals(""))
-                {
-                    try
-                    {
-                        Thread.sleep(5000);
-                    }
-                    catch (InterruptedException e)
-                    {
-                        e.printStackTrace();
-                    }
                 }
                 new EstablishConnection().execute();
             }
