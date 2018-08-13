@@ -87,16 +87,7 @@ public class MainActivity extends AppCompatActivity
     }
     public static String getIP()
     {
-        try
-        {
-            return ipAndPort.substring(0, ipAndPort.indexOf(":"));
-        }
-        catch (Exception e)
-        {
-            ipFile.delete(); //TODO: Remove. This is temporary while there is no IP validation, as it prevents the app constantly crashing on boot.
-            System.exit(0);
-            return "";
-        }
+        return ipAndPort.substring(0, ipAndPort.indexOf(":"));
     }
     public static String getPort()
     {
@@ -136,6 +127,7 @@ public class MainActivity extends AppCompatActivity
     }
     public void setNewIP()
     {
+        String oldIP = ipAndPort;
         AlertDialog.Builder ipChangeDialog = new AlertDialog.Builder(MainActivity.this);
         ipChangeDialog.setTitle("New IP & Port (X.Y.Z.W:ABCD)");
         EditText editText = new EditText(MainActivity.this);
@@ -146,12 +138,15 @@ public class MainActivity extends AppCompatActivity
             try
             {
                 String newIP = editText.getText().toString();
-                //TODO: Validate the input for IP:Port
-                PrintWriter printWriter = new PrintWriter(ipFile);
-                printWriter.print(newIP);
-                printWriter.close();
-                ipAndPort = newIP;
-                ConnectionManager.reset();
+                if (validateIP(newIP))
+                {
+                    PrintWriter printWriter = new PrintWriter(ipFile);
+                    printWriter.print(newIP);
+                    printWriter.close();
+                    ipAndPort = newIP;
+                    ConnectionManager.reset();
+                }
+
             }
             catch (IOException e)
             {
@@ -161,8 +156,31 @@ public class MainActivity extends AppCompatActivity
         });
         ipChangeDialog.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         ipChangeDialog.show();
+        if (oldIP.equals(ipAndPort))
+        {
+            AlertDialog.Builder invalidIPNotice = new AlertDialog.Builder(MainActivity.this);
+            invalidIPNotice.setTitle("Error");
+            invalidIPNotice.setMessage("The IP and port you have entered is not valid.");
+            invalidIPNotice.setNeutralButton("Oh dear!", (dialog, which) -> dialog.dismiss());
+        }
     }
-
+    private static boolean validateIP(String IP)
+    {
+        String[] ip = IP.substring(0, IP.indexOf(":")).split("\\.");
+        String port = IP.substring(IP.indexOf(":"));
+        for (String ipAddress : ip)
+        {
+            if (!((Byte.parseByte(ipAddress) >= 0) && (Byte.parseByte(ipAddress) <= 254)))
+            {
+                return false;
+            }
+        }
+        if (!((Integer.parseInt(port) >= 0) && (Integer.parseInt(port) <= 65535)))
+        {
+            return false;
+        }
+        return true;
+    }
     public static String encrypt(String source)
     {
         return source; //TODO: Reimplement this
