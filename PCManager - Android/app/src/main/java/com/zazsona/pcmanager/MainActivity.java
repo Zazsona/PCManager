@@ -1,6 +1,7 @@
 package com.zazsona.pcmanager;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -21,23 +22,23 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class MainActivity extends AppCompatActivity {
-    private static Socket connection;
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
-    private boolean isPaused;
-    private String clientID = "";
-    private String newCodeStr = "";
+public class MainActivity extends AppCompatActivity
+{
+
+    private static boolean paused;
+    private static File ipFile;
+    private static String ipAndPort;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        File codeFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
-        isPaused = false;
+        paused = false;
+        ipFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
 
         ButtonManager buttonManager = new ButtonManager();
+        buttonManager.setMainActivity(this);
         Button btnShutdown = findViewById(R.id.btnShutdown);
         btnShutdown.setOnClickListener(buttonManager);
         Button btnStandby = findViewById(R.id.btnStandby);
@@ -51,75 +52,79 @@ public class MainActivity extends AppCompatActivity {
         Button btnNCode = findViewById(R.id.btnNCode);
         btnNCode.setOnClickListener(buttonManager);
 
-        if (!codeFile.exists())
+        try
         {
-            newCode(true);
+            if (!ipFile.exists())
+            {
+                ipFile.createNewFile();
+                PrintWriter printWriter = new PrintWriter(ipFile);
+                printWriter.print("0.0.0.0:00000");
+                printWriter.close();
+                setNewIP();
+            }
+
+            Scanner scanner = new Scanner(ipFile);
+            ipAndPort = scanner.next();
+            scanner.close();
+            ConnectionManager connectionManager = new ConnectionManager();
+            connectionManager.setMainActivity(this);
+            connectionManager.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            AlertDialog.Builder errorDialog = new AlertDialog.Builder(MainActivity.this);
+            errorDialog.setTitle("Error");
+            errorDialog.setMessage("An error occurred when trying to access app storage.");
+            errorDialog.setNeutralButton("Exit", (dialog1, which1) ->
+                                            {
+                                                finish();
+                                                System.exit(1);
+                                            });
+            errorDialog.show();
+        }
+    }
+    public static String getIP()
+    {
+        try
+        {
+            return ipAndPort.substring(0, ipAndPort.indexOf(":"));
+        }
+        catch (Exception e)
+        {
+            ipFile.delete(); //TODO: Remove. This is temporary while there is no IP validation, as it prevents the app constantly crashing on boot.
+            System.exit(0);
+            return "";
+        }
+    }
+    public static String getPort()
+    {
+        return ipAndPort.substring(ipAndPort.indexOf(":")+1);
+    }
+    public static boolean isPaused()
+    {
+        return paused;
+    }
+    public void setConnectedView(boolean isConnected)
+    {
+        ImageView ivStatus = findViewById(R.id.statusIcon);
+
+        if (isConnected)
+        {
+            ivStatus.setImageResource(R.drawable.online);
         }
         else
         {
-            try
-            {
-                Scanner scanner = new Scanner(codeFile);
-                clientID = scanner.next();
-                scanner.close();
-                new EstablishConnection().execute();
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
+            ivStatus.setImageResource(R.drawable.offline);
         }
     }
-
-    public class ButtonManager implements View.OnClickListener
-    {
-        @Override
-        public void onClick(View view)
-        {
-            int viewID = view.getId();
-            switch (viewID)
-            {
-                case R.id.btnShutdown:
-                    Command shutdownCommand = new Command();
-                    shutdownCommand.execute("0", clientID);
-                    break;
-
-                case R.id.btnStandby:
-                    Command standbyCommand = new Command();
-                    standbyCommand.execute("1", clientID);
-                    break;
-
-                case R.id.btnLock:
-                    Command lockCommand = new Command();
-                    lockCommand.execute("2", clientID);
-                    break;
-
-                case R.id.btnRestart:
-                    Command restartCommand = new Command();
-                    restartCommand.execute("3", clientID);
-                    break;
-
-                case R.id.btnAbout:
-                    AlertDialog.Builder aboutBox = new AlertDialog.Builder(MainActivity.this);
-                    aboutBox.setTitle("About");
-                    aboutBox.setMessage("To get started, press \"New Code\" and enter the code shown on your PC.");
-                    aboutBox.setNeutralButton("Ok!", (dialog, which) -> dialog.dismiss());
-                    aboutBox.show();
-                    break;
-
-                case R.id.btnNCode:
-                    newCode(false);
-                    break;
-            }
-        }
-    }
-
     @Override
     protected void onPause()
     {
         super.onPause();
         System.out.println("App paused.");
-        isPaused = true;
+        paused = true;
 
     }
     @Override
@@ -127,52 +132,26 @@ public class MainActivity extends AppCompatActivity {
     {
         super.onResume();
         System.out.println("App resumed.");
-        isPaused = false;
-        if (connection == null && !clientID.equals(""))
-        {
-            new EstablishConnection().execute();
-        }
+        paused = false;
     }
-    private void newCode(boolean onBootArg)
+    public void setNewIP()
     {
-        final boolean onBoot = onBootArg;
-        AlertDialog.Builder codeDialog = new AlertDialog.Builder(MainActivity.this);
-        codeDialog.setTitle("New Code");
-        final EditText input = new EditText(MainActivity.this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        codeDialog.setView(input);
-        codeDialog.setPositiveButton("Enter", (dialog, which) ->
+        AlertDialog.Builder ipChangeDialog = new AlertDialog.Builder(MainActivity.this);
+        ipChangeDialog.setTitle("New IP & Port (X.Y.Z.W:ABCD)");
+        EditText editText = new EditText(MainActivity.this);
+        editText.setInputType(InputType.TYPE_CLASS_TEXT);
+        ipChangeDialog.setView(editText);
+        ipChangeDialog.setPositiveButton("Enter", (dialog, which) ->
         {
-            newCodeStr = input.getText().toString();
-            clientID = newCodeStr;
-            File codeFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
-            if (!codeFile.exists())
-            {
-                try
-                {
-                    codeFile.createNewFile();
-                }
-                catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-            }
             try
             {
-                FileWriter fileWriter = new FileWriter(codeFile);
-                PrintWriter printWriter = new PrintWriter(fileWriter);
-                printWriter.print(newCodeStr);
+                String newIP = editText.getText().toString();
+                //TODO: Validate the input for IP:Port
+                PrintWriter printWriter = new PrintWriter(ipFile);
+                printWriter.print(newIP);
                 printWriter.close();
-                fileWriter.close();
-                AlertDialog.Builder aboutBox = new AlertDialog.Builder(MainActivity.this);
-                aboutBox.setTitle("Success");
-                aboutBox.setMessage("New code set successfully.");
-                aboutBox.setNeutralButton("Ok!", (dialog1, which1) -> dialog1.dismiss());
-                aboutBox.show();
-                if (onBoot)
-                {
-                    new EstablishConnection().execute();
-                }
+                ipAndPort = newIP;
+                ConnectionManager.reset();
             }
             catch (IOException e)
             {
@@ -180,212 +159,19 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-        codeDialog.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        codeDialog.show();
-    }
-    private class Command extends AsyncTask<String, Void, Void>
-    {
-        boolean isSuccess;
-        private void runCommand(String code, String id)
-        {
-            try {
-                output.writeObject(encrypt("{\"id\": \""+getIPFromCode(id)+"\", \"cid\": \"" + code + "\"}"));
-                output.flush();
-                String successCheck = (String) input.readObject();
-                if (successCheck.equals("-1")) {
-                    isSuccess = true;
-                }
-            } catch (IOException | ClassNotFoundException e) {
-                isSuccess = false;
-            }
-        }
-        @Override
-        protected Void doInBackground(String... args) {
-            isSuccess = true;
-            runCommand(args[0], args[1]);
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void result)
-        {
-            AlertDialog.Builder commandNotice = new AlertDialog.Builder(MainActivity.this);
-            commandNotice.setTitle("Command Sent");
-            commandNotice.setNeutralButton("Got it!", (dialog, which) -> dialog.dismiss());
-
-            if (isSuccess)
-            {
-                commandNotice.setMessage("Command executed successfully.");
-            }
-            else
-            {
-                commandNotice.setMessage("Command sending failed.");
-                reportDisconnect();
-            }
-            commandNotice.show();
-        }
+        ipChangeDialog.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        ipChangeDialog.show();
     }
 
     public static String encrypt(String source)
     {
-        return source; //TODO: Implement this
+        return source; //TODO: Reimplement this
     }
-    public static String getIPFromCode(String source)
+    public static String decrypt(String source)
     {
-        return source; //TODO: Implement this
+        return source; //TODO: Reimplement this to be more secure
     }
 
-    private class EstablishConnection extends AsyncTask<Void, Void, Void> {
-        boolean isSuccess = false;
 
-        @Override
-        protected Void doInBackground(Void... args)
-        {
-            isSuccess = connect();
-            if (!isSuccess)
-            {
-                if (!clientID.equals(""))
-                {
-                    try
-                    {
-                        Thread.sleep(5000);
-                    }
-                    catch (InterruptedException e)
-                    {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            return null;
-        }
 
-        @Override
-        protected void onPostExecute(Void result)
-        {
-            if (isSuccess)
-            {
-                System.out.println("Connected!");
-                ImageView ivStatus = findViewById(R.id.statusIcon);
-                ivStatus.setImageResource(R.drawable.online);
-                new ConnectionChecker().execute();
-            }
-            else
-            {
-                connection = null;
-                if (isPaused)
-                {
-                    return;
-                }
-                new EstablishConnection().execute();
-            }
-
-        }
-    }
-
-    private boolean connect()
-    {
-        try
-        {
-            connection = new Socket();
-            File codeFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
-            Scanner scanner = new Scanner(codeFile);
-            String IP = getIPFromCode(scanner.next());
-            scanner.close();
-            System.out.println("Connecting to "+IP);
-            connection.connect(new InetSocketAddress(IP, 2865), 3000);
-            System.out.println("Connected to "+IP);
-            output = new ObjectOutputStream(connection.getOutputStream());
-            output.flush();
-            input = new ObjectInputStream(connection.getInputStream());
-            String connectionCode = (String) input.readObject();
-            if (connectionCode.equals("1337"))
-            {
-                return true;
-            }
-            return true;
-        }
-        catch (IOException | ClassNotFoundException e)
-        {
-            try
-            {
-                if (connection != null)
-                {
-                    if (!connection.isClosed())
-                    {
-                        connection.close();
-                        connection = null;
-                    }
-                }
-            } catch (IOException e1)
-            {
-                e1.printStackTrace();
-            }
-            return false;
-        }
-    }
-
-    private class ConnectionChecker extends AsyncTask<Void, Void, Integer>
-    {
-        @Override
-        public Integer doInBackground(Void... args)
-        {
-            while (isPaused)
-            {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            try
-            {
-                Thread.sleep(1000);
-                System.out.println("Ping");
-                output.writeObject(encrypt("{\"id\": \""+getIPFromCode(clientID)+"\", \"cid\": \"#\"}"));
-                output.flush();
-                String successCheck = (String) input.readObject();
-                if (successCheck.equals("-1"))
-                {
-                    return 1;
-                }
-            }
-            catch (InterruptedException | ClassNotFoundException e)
-            {
-                e.printStackTrace();
-                return 0;
-            }
-            catch (IOException e)
-            {
-                return 0;
-            }
-            return 0;
-        }
-        @Override
-        public void onPostExecute(Integer result)
-        {
-            if (result.equals(0))
-            {
-                reportDisconnect();
-            }
-            else
-            {
-                new ConnectionChecker().execute();
-            }
-        }
-    }
-    private void reportDisconnect()
-    {
-        try
-        {
-            System.out.println("Connection lost.");
-            connection.close();
-            ImageView ivStatus = findViewById(R.id.statusIcon);
-            ivStatus.setImageResource(R.drawable.offline);
-            new EstablishConnection().execute();
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-    }
 }

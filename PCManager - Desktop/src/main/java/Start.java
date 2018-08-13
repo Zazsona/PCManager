@@ -22,9 +22,11 @@ public class Start
 	private static final byte REBOOT = 3;
 
 	private static final byte CONNECTION_ESTABLISHED = -1;
-	private static final byte COMMAND_EXECUTED_SUCCESSFULLY = -2;
-	private static final byte COMMAND_NOT_FOUND = -3;
-	private static final byte COMMAND_NOT_SUPPORTED_ON_OS = -4;
+	private static final byte CONNECTION_LOST = -2;
+	private static final byte CONNECTION_ONGOING = -3;
+	private static final byte COMMAND_EXECUTED_SUCCESSFULLY = -4;
+	private static final byte COMMAND_NOT_FOUND = -5;
+	private static final byte COMMAND_NOT_SUPPORTED_ON_OS = -6;
 
 
 	public static void main(String[] args) 
@@ -79,13 +81,13 @@ public class Start
 				input = new ObjectInputStream(connection.getInputStream());
 				try
 				{
-					output.writeObject(CONNECTION_ESTABLISHED);
+					output.writeByte(CONNECTION_ESTABLISHED);
 					output.flush();
 					handleConnection(connection);
 				}
 				catch (IOException e)
 				{
-					//Fail silently
+					e.printStackTrace();
 				}
 			}
 			catch (IOException e)
@@ -128,26 +130,26 @@ public class Start
 			{
 				case SHUTDOWN: //Shutdown
 					Runtime.getRuntime().exec("shutdown -t 0");
-					output.writeObject(COMMAND_EXECUTED_SUCCESSFULLY);
+					output.writeByte(COMMAND_EXECUTED_SUCCESSFULLY);
 					output.flush();
 					break;
 				case STANDBY: //Standby
 					Runtime.getRuntime().exec("rundll32.exe powrprof.dll,SetSuspendState 0,1,0");
-					output.writeObject(COMMAND_EXECUTED_SUCCESSFULLY);
+					output.writeByte(COMMAND_EXECUTED_SUCCESSFULLY);
 					output.flush();
 					break;
 				case LOCK: //Lock
 					Runtime.getRuntime().exec("rundll32.exe user32.dll, LockWorkStation");
-					output.writeObject(COMMAND_EXECUTED_SUCCESSFULLY);
+					output.writeByte(COMMAND_EXECUTED_SUCCESSFULLY);
 					output.flush();
 					break;
 				case REBOOT: //Reboot
 					Runtime.getRuntime().exec("shutdown -r -t 0");
-					output.writeObject(COMMAND_EXECUTED_SUCCESSFULLY);
+					output.writeByte(COMMAND_EXECUTED_SUCCESSFULLY);
 					output.flush();
 					break;
 				default:
-					output.writeObject(COMMAND_NOT_FOUND);
+					output.writeByte(COMMAND_NOT_FOUND);
 					output.flush();
 					break;
 
@@ -168,7 +170,7 @@ public class Start
 	}
 	private static String updateSavedIP() throws IOException
 	{
-		String IP = InetAddress.getLocalHost().getHostAddress();
+		String IP = InetAddress.getLocalHost().getHostAddress()+":"+port;
 		PrintWriter printWriter = new PrintWriter(chFile);
 		printWriter.print(IP);
 		printWriter.close();
@@ -209,12 +211,10 @@ public class Start
 
 	private class ResponseData //JSON class
 	{
-		String ip; //The connection hash to identify the link (Basically, the desktop's IP)
 		String cid; //Command ID.
 
-		public ResponseData(String ip, String cid)
+		public ResponseData(String cid)
 		{
-			this.ip = ip;
 			this.cid = cid;
 		}
 	}
