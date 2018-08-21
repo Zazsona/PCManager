@@ -1,12 +1,11 @@
 import java.io.*;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.util.Scanner;
 
 import javax.swing.JOptionPane;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 
 public class Start
 {
@@ -31,7 +30,7 @@ public class Start
 
 	public static void main(String[] args) 
 	{
-		if (args.length > 0)
+		/*if (args.length > 0)
 		{
 			try
 			{
@@ -46,10 +45,9 @@ public class Start
 				System.err.println("The passed argument is not a valid port.");
 			}
 
-		}
+		}*/
 		try
 		{
-			ServerSocket server = new ServerSocket(port, 1);
 			if (!chFile.exists())
 			{
 				firstTimeSetup();
@@ -61,6 +59,7 @@ public class Start
 				manageIPChange();
 			}
 
+			ServerSocket server = new ServerSocket(port, 1);
 			runServer(server);
 		}
 		catch (IOException e)
@@ -68,13 +67,35 @@ public class Start
 			System.err.println("ERROR: Default port is already taken. You can pass a new port as a command line argument.");
 		}
 	}
+	private static void revealLocationAtRequest()
+	{
+		try
+		{
+			DatagramSocket socket = new DatagramSocket(2866);
+			byte[] receivedToken = new byte[20];
+			DatagramPacket codePacket = new DatagramPacket(receivedToken, receivedToken.length);
+			socket.receive(codePacket);
+			//TODO: Add check for if it is a registered device
 
+			String sentToken = "foobar"; //TODO: Change to the link token
+			byte[] confirmBuffer = sentToken.getBytes();
+			DatagramPacket replyPacket = new DatagramPacket(confirmBuffer, confirmBuffer.length, codePacket.getSocketAddress());
+			socket.send(replyPacket);
+			socket.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
 	private static void runServer(ServerSocket server)
 	{
 		while (true)
 		{
 			try
 			{
+				revealLocationAtRequest();
+				
 				Socket connection = server.accept();
 				output = new ObjectOutputStream(connection.getOutputStream());
 				output.flush();
@@ -108,6 +129,7 @@ public class Start
 			}
 			catch (IOException | ClassNotFoundException e)
 			{
+				System.out.println("Lost connection to the phone.");
 				try
 				{
 					connection.close();
@@ -159,6 +181,11 @@ public class Start
 		{
 			System.out.println("Could not locate Runtime");
 			e.printStackTrace();
+		}
+		catch (JsonSyntaxException e)
+		{
+			//Likely just the App confirming the connection. It's all good.
+			//If it's something else, we're best playing it safe and doing nothing anyway.
 		}
 	}
 

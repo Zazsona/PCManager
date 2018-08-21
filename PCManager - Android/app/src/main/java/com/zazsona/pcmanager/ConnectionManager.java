@@ -5,8 +5,7 @@ import android.os.AsyncTask;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.*;
 
 public class ConnectionManager extends AsyncTask<Void, Void, Byte>
 {
@@ -88,7 +87,7 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
                     Thread.sleep(1000); //Wait until we're unpaused...
                 }
                 Thread.sleep(1000); //Wait a tick as to not spam the PC
-                output.writeByte(0);
+                output.writeObject("0");
                 output.flush(); //Doesn't matter what is sent. Just testing the connection is live.
                 return CONNECTION_ONGOING;
             }
@@ -138,9 +137,22 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
     {
         try
         {
+            DatagramSocket socket = new DatagramSocket();
+            String linkToken = "foobar"; //TODO: Change to a token
+            byte[] tokenBuffer = linkToken.getBytes();
+            socket.setBroadcast(true);
+            DatagramPacket broadcastPacket = new DatagramPacket(tokenBuffer, tokenBuffer.length, InetAddress.getByName("255.255.255.255"), 2866);
+            socket.send(broadcastPacket);
+
+            byte[] returnedCode = new byte[linkToken.getBytes().length];
+            DatagramPacket codePacket = new DatagramPacket(returnedCode, returnedCode.length);
+            socket.receive(codePacket);
+
+            //TODO: Check if registered device (May be superflous, server already does this check before responding)
+
             connection = new Socket();
             System.out.println("Connecting to "+MainActivity.getIP());
-            connection.connect(new InetSocketAddress(MainActivity.getIP(), Integer.parseInt(MainActivity.getPort())), 3000);
+            connection.connect(new InetSocketAddress(codePacket.getAddress(), 2865), 3000);
             System.out.println("Connected to "+MainActivity.getIP());
             output = new ObjectOutputStream(connection.getOutputStream());
             output.flush();
@@ -150,7 +162,7 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
             {
                 return true;
             }
-            return true;
+            return false;
         }
         catch (IOException e)
         {
