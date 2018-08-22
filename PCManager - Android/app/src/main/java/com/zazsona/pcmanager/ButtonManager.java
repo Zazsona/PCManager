@@ -46,10 +46,6 @@ public class ButtonManager implements View.OnClickListener
                 aboutBox.setNeutralButton("Ok!", (dialog, which) -> dialog.dismiss());
                 aboutBox.show();
                 break;
-
-            case R.id.btnNCode:
-                mainActivity.setNewIP();
-                break;
         }
     }
 }

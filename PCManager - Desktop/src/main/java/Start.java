@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.util.Scanner;
 
 import javax.swing.JOptionPane;
 
@@ -9,7 +8,7 @@ import com.google.gson.JsonSyntaxException;
 
 public class Start
 {
-	private static File chFile = new File(System.getenv("AppData") + "\\.ZazDat\\PCManager\\connection-hash.txt");
+	private static File tokenFile = new File(System.getenv("AppData") + "\\.ZazDat\\PCManager\\connection-token.txt");
 
 	private static short port = 2865;
 	private static ObjectOutputStream output;
@@ -48,15 +47,9 @@ public class Start
 		}*/
 		try
 		{
-			if (!chFile.exists())
+			if (!tokenFile.exists())
 			{
 				firstTimeSetup();
-			}
-
-			String savedIP = getSavedIP();
-			if (!savedIP.equals(InetAddress.getLocalHost().getHostAddress()))
-			{
-				manageIPChange();
 			}
 
 			ServerSocket server = new ServerSocket(port, 1);
@@ -71,15 +64,16 @@ public class Start
 	{
 		try
 		{
-			DatagramSocket socket = new DatagramSocket(2866);
+			System.out.println("Listening on "+(port+1));
+			DatagramSocket socket = new DatagramSocket((port+1));
 			byte[] receivedToken = new byte[20];
-			DatagramPacket codePacket = new DatagramPacket(receivedToken, receivedToken.length);
-			socket.receive(codePacket);
+			DatagramPacket tokenPacket = new DatagramPacket(receivedToken, receivedToken.length);
+			socket.receive(tokenPacket);
 			//TODO: Add check for if it is a registered device
 
-			String sentToken = "foobar"; //TODO: Change to the link token
-			byte[] confirmBuffer = sentToken.getBytes();
-			DatagramPacket replyPacket = new DatagramPacket(confirmBuffer, confirmBuffer.length, codePacket.getSocketAddress());
+			String token = "foobar"; //TODO: Change to the link token
+			byte[] sentToken = token.getBytes();
+			DatagramPacket replyPacket = new DatagramPacket(sentToken, sentToken.length, tokenPacket.getSocketAddress());
 			socket.send(replyPacket);
 			socket.close();
 		}
@@ -95,7 +89,7 @@ public class Start
 			try
 			{
 				revealLocationAtRequest();
-				
+
 				Socket connection = server.accept();
 				output = new ObjectOutputStream(connection.getOutputStream());
 				output.flush();
@@ -174,7 +168,6 @@ public class Start
 					output.writeByte(COMMAND_NOT_FOUND);
 					output.flush();
 					break;
-
 			}
 		}
 		catch (IOException e)
@@ -189,40 +182,17 @@ public class Start
 		}
 	}
 
-	private static String getSavedIP() throws FileNotFoundException
-	{
-		Scanner fileScanner = new Scanner(chFile);
-		String storedIP = fileScanner.next();
-		return storedIP;
-	}
-	private static String updateSavedIP() throws IOException
-	{
-		String IP = InetAddress.getLocalHost().getHostAddress()+":"+port;
-		PrintWriter printWriter = new PrintWriter(chFile);
-		printWriter.print(IP);
-		printWriter.close();
-		return IP;
-	}
-
 	private static void firstTimeSetup()
 	{
-		try
+		/*try
 		{
-			chFile.getParentFile().mkdirs();
-			chFile.createNewFile();
-			String IP = updateSavedIP();
-			JOptionPane.showMessageDialog(null, "Welcome to PCManager! To set up, please enter this code in the mobile app and click \"Ok\":\n"+IP);
+
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace();
 			System.exit(1);
-		}
-	}
-	private static void manageIPChange() throws IOException
-	{
-		String IP = updateSavedIP();
-		JOptionPane.showMessageDialog(null, "Your local IP address has changed. To avoid this, please set-up a static IP address.\nTo reconnect, please select \"New Code\" in the app and enter:\n"+IP);
+		}*/
 	}
 
 

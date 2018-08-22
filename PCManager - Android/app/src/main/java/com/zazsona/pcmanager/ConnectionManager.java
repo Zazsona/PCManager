@@ -68,7 +68,7 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
                 {
                     try
                     {
-                        Thread.sleep(5000);
+                        Thread.sleep(2000);
                     }
                     catch (InterruptedException e)
                     {
@@ -102,7 +102,6 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
             }
             catch (NullPointerException e)
             {
-                //The IP has been changed.
                 return CONNECTION_LOST;
             }
         }
@@ -143,6 +142,7 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
             socket.setBroadcast(true);
             DatagramPacket broadcastPacket = new DatagramPacket(tokenBuffer, tokenBuffer.length, InetAddress.getByName("255.255.255.255"), 2866);
             socket.send(broadcastPacket);
+            System.out.println("Packet sent.");
 
             byte[] returnedCode = new byte[linkToken.getBytes().length];
             DatagramPacket codePacket = new DatagramPacket(returnedCode, returnedCode.length);
@@ -151,9 +151,9 @@ public class ConnectionManager extends AsyncTask<Void, Void, Byte>
             //TODO: Check if registered device (May be superflous, server already does this check before responding)
 
             connection = new Socket();
-            System.out.println("Connecting to "+MainActivity.getIP());
+            System.out.println("Connecting to "+codePacket.getAddress());
             connection.connect(new InetSocketAddress(codePacket.getAddress(), 2865), 3000);
-            System.out.println("Connected to "+MainActivity.getIP());
+            System.out.println("Connected to "+codePacket.getAddress());
             output = new ObjectOutputStream(connection.getOutputStream());
             output.flush();
             input = new ObjectInputStream(connection.getInputStream());

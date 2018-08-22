@@ -26,7 +26,6 @@ public class MainActivity extends AppCompatActivity
 {
 
     private static boolean paused;
-    private static File ipFile;
     private static String ipAndPort;
 
     @Override
@@ -35,7 +34,6 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         paused = false;
-        ipFile = new File(MainActivity.this.getFilesDir(), "IP.txt");
 
         ButtonManager buttonManager = new ButtonManager();
         buttonManager.setMainActivity(this);
@@ -49,41 +47,10 @@ public class MainActivity extends AppCompatActivity
         btnRestart.setOnClickListener(buttonManager);
         Button btnAbout = findViewById(R.id.btnAbout);
         btnAbout.setOnClickListener(buttonManager);
-        Button btnNCode = findViewById(R.id.btnNCode);
-        btnNCode.setOnClickListener(buttonManager);
 
-        try
-        {
-            if (!ipFile.exists())
-            {
-                ipFile.createNewFile();
-                PrintWriter printWriter = new PrintWriter(ipFile);
-                printWriter.print("0.0.0.0:00000");
-                printWriter.close();
-                setNewIP();
-            }
-
-            Scanner scanner = new Scanner(ipFile);
-            ipAndPort = scanner.next();
-            scanner.close();
-            ConnectionManager connectionManager = new ConnectionManager();
-            connectionManager.setMainActivity(this);
-            connectionManager.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            AlertDialog.Builder errorDialog = new AlertDialog.Builder(MainActivity.this);
-            errorDialog.setTitle("Error");
-            errorDialog.setMessage("An error occurred when trying to access app storage.");
-            errorDialog.setNeutralButton("Exit", (dialog1, which1) ->
-                                            {
-                                                finish();
-                                                System.exit(1);
-                                            });
-            errorDialog.show();
-        }
+        ConnectionManager connectionManager = new ConnectionManager();
+        connectionManager.setMainActivity(this);
+        connectionManager.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
     public static String getIP()
     {
@@ -124,62 +91,6 @@ public class MainActivity extends AppCompatActivity
         super.onResume();
         System.out.println("App resumed.");
         paused = false;
-    }
-    public void setNewIP()
-    {
-        String oldIP = ipAndPort;
-        AlertDialog.Builder ipChangeDialog = new AlertDialog.Builder(MainActivity.this);
-        ipChangeDialog.setTitle("New IP & Port (X.Y.Z.W:ABCD)");
-        EditText editText = new EditText(MainActivity.this);
-        editText.setInputType(InputType.TYPE_CLASS_TEXT);
-        ipChangeDialog.setView(editText);
-        ipChangeDialog.setPositiveButton("Enter", (dialog, which) ->
-        {
-            try
-            {
-                String newIP = editText.getText().toString();
-                if (validateIP(newIP))
-                {
-                    PrintWriter printWriter = new PrintWriter(ipFile);
-                    printWriter.print(newIP);
-                    printWriter.close();
-                    ipAndPort = newIP;
-                    ConnectionManager.reset();
-                }
-
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-
-        });
-        ipChangeDialog.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        ipChangeDialog.show();
-        if (oldIP.equals(ipAndPort))
-        {
-            AlertDialog.Builder invalidIPNotice = new AlertDialog.Builder(MainActivity.this);
-            invalidIPNotice.setTitle("Error");
-            invalidIPNotice.setMessage("The IP and port you have entered is not valid.");
-            invalidIPNotice.setNeutralButton("Oh dear!", (dialog, which) -> dialog.dismiss());
-        }
-    }
-    private static boolean validateIP(String IP)
-    {
-        String[] ip = IP.substring(0, IP.indexOf(":")).split("\\.");
-        String port = IP.substring(IP.indexOf(":"));
-        for (String ipAddress : ip)
-        {
-            if (!((Byte.parseByte(ipAddress) >= 0) && (Byte.parseByte(ipAddress) <= 254)))
-            {
-                return false;
-            }
-        }
-        if (!((Integer.parseInt(port) >= 0) && (Integer.parseInt(port) <= 65535)))
-        {
-            return false;
-        }
-        return true;
     }
     public static String encrypt(String source)
     {

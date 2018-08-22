@@ -22,7 +22,7 @@ public class CommandSender extends AsyncTask<Byte, Void, Byte>
     {
         try
         {
-            ConnectionManager.getOutput().writeObject(MainActivity.encrypt("{\"cid\": \"" + cid + "\"}"));
+            ConnectionManager.getOutput().writeObject(MainActivity.encrypt("{\"cid\": \"" + cid + "\"}")); //TODO: Null check
             ConnectionManager.getOutput().flush();
             byte response = ConnectionManager.getInput().readByte();
             return response;
